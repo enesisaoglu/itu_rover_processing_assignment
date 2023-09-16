@@ -1,0 +1,3 @@
+<launch>
+    <node pkg="rosbag" type="play" name="player" output="screen" args="$(find iturover_processing_assignment)/rosbag/assignment.bag"/>
+</launch>
