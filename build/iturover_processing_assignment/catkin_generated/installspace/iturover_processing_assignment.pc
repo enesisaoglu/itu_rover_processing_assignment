@@ -1,0 +1,8 @@
+prefix=/home/enesisaoglu/rover_ws/install
+
+Name: iturover_processing_assignment
+Description: Description of iturover_processing_assignment
+Version: 0.0.0
+Cflags: 
+Libs: -L${prefix}/lib 
+Requires: 
