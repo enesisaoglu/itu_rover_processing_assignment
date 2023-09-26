@@ -4,5 +4,5 @@
 
 
 
-https://github.com/enesisaoglu/itu_rover_processing_assignment/assets/109024859/50c0edf8-4736-4bc3-9f7d-62ccfd529648
+https://github.com/enesisaoglu/itu_rover_processing_assignment/assets/109024859/ebc8f504-68ac-4119-bfce-3cd554b875d3
 
