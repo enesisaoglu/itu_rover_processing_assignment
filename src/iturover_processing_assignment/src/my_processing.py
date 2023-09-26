@@ -6,20 +6,30 @@ from sensor_msgs.msg import CompressedImage
 from std_msgs.msg import String
 from cv_bridge import CvBridge, CvBridgeError
 
+# A Global Command that is set by default 'RGB'...
+Command = 'RGB'
+
 class MyProcessing:
     
     def __init__(self):
-        rospy.init_node('itu_rover_CompressedVideo_listener', anonymous=False)
+        # init node...
+        rospy.init_node('itu_rover_compressedVideo_listener', anonymous=False)
+        # A subscriber to the filtered commands...
         self.filter_subscriber = rospy.Subscriber('/filter', String, self.FilteredCommandCallback)
+        # A subscriber to the compressed video...
         self.compressedVideo_subscriber = rospy.Subscriber('/video_topic/compressed', CompressedImage, self.CompressedImageCallback)
+        # A publisher to publish the each processed frame... 
         self.compressedVideo_publisher = rospy.Publisher('/rover_view/compressed', CompressedImage, queue_size=10)
-        self.rate = rospy.Rate(0.5) 
-        self.bridge = CvBridge()
+        self.rate = rospy.Rate(0.5) #HZ...
+        # Provides an interface between ROS and OpenCv...
+        self.bridge = CvBridge() 
+        # Set current image to none...
         self.current_image = None
     
-
+    # a function to handle messages that is being sent on '/video_topic/compressed' topic...
     def CompressedImageCallback(self, image_msg):
         try:
+            # try to convert compressed image message that is being sent to the cv2
             cv_image = self.bridge.compressed_imgmsg_to_cv2(image_msg, desired_encoding="passthrough")
         except CvBridgeError as e:
             rospy.logerr(e)
@@ -28,57 +38,61 @@ class MyProcessing:
         if cv_image is not None:
             # Store the current image for processing
             self.current_image = cv_image
-            # After processing, convert the image back to CompressedImage
         else:
             rospy.logwarn("Received None image. Skipping processing.")
         
 
+    # a function to handle messages that is being sent on '/filter' topic...
     def FilteredCommandCallback(self, data):
-        command = data.data
-        image = self.current_image
-        if command == 'GRAY':
-            self.process_image(self.grayscale, image)
-        elif command == 'RGB':
-            self.process_image(self.rgb, image)
-        elif command == 'RESIZE_UP':
-            self.process_image(self.resize_up, image)
-        elif command == 'RESIZE_DOWN':
-            self.process_image(self.resize_down, image)
-        else:
-            rospy.logwarn(f"Unknown command received: {command}")
+        global Command
+        # Set global command to the data that is being sent as random...
+        Command = data.data
+
+    # a function to handle process...
+    def Run(self):
+        while not rospy.is_shutdown():
+            image = self.current_image
+            print("Video is being processed as",Command)
+            processed_image = None
+            if image is not None:
+                if Command == 'GRAY':
+                    processed_image = self.grayscale(image)
+                elif Command == 'RGB':
+                    processed_image = self.rgb(image)
+                elif Command == 'RESIZE_UP':
+                    processed_image = self.resize_up(image)
+                elif Command == 'RESIZE_DOWN':
+                    processed_image = self.resize_down(image)
+                else:
+                    rospy.logwarn(f"Unknown command received: {Command}")
+
+                if processed_image is not None:
+                    # After processing, convert the image back to CompressedImage
+                    self.publish_processed_image(processed_image)
     
- 
-    def process_image(self, operation, image):
-        # Apply the specified operation
-        processed_image = operation(image)
-
-        # Publish the processed image
-        self.publish_processed_image(processed_image)
-
-   
+    # A function to process image to the gray...
     def grayscale(self, image):
         if image is None:
             rospy.logwarn("Image is None. Skipping grayscale.")
             return image
         return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     
+    # A function to process image to the RGB...
     def rgb(self, image):
         # Do nothing, as it's already in RGB format
         return image
-
+    
+    # A function to process height and width of image to the up...
     def resize_up(self, image):
         if image is None:
             rospy.logwarn("Image is None. Skipping resize_up.")
             return image
-
-        print(type(image))
         
         height, width = self.current_image.shape[:2]
         print(height,width)
 
         new_height = height * 2
         new_width = width * 2
-        
 
         rospy.loginfo(f"Resizing up: Original size: ({height}, {width}), New size: ({new_height}, {new_width})")
         
@@ -86,13 +100,12 @@ class MyProcessing:
         resized_image = cv2.resize(self.current_image, (new_width, new_height), interpolation=cv2.INTER_NEAREST)
         return resized_image
 
-
+    # A function to process height and width of image to the down...
     def resize_down(self, image):
         if image is None:
             rospy.logwarn("Image is None. Skipping resize_down.")
             return image
         
-
         height, width = self.current_image.shape[:2]
         print(height,width)
 
@@ -106,20 +119,13 @@ class MyProcessing:
         resized_image = cv2.resize(self.current_image, (new_width, new_height), interpolation=cv2.INTER_NEAREST)
         return resized_image
         
-
+    # A function to publish the processed image as a CompressedImage message...
     def publish_processed_image(self, image):
-        # Publish the processed image as a CompressedImage message
         image_msg = self.bridge.cv2_to_compressed_imgmsg(image)
         self.compressedVideo_publisher.publish(image_msg)
 
-
-
 if __name__ == '__main__':
-    print("my_processing.py node has been started...")
+    print("itu_rover_compressedVideo_listener node has been started...")
     FilteredCommandNode = MyProcessing()
+    FilteredCommandNode.Run()
     rospy.spin()  # Keep the script running
-
-
-
-
-
