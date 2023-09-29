@@ -26,8 +26,8 @@ class MyProcessing:
         # Set current image to None...
         self.current_image = None
         # Set current image size 
-        self.current_image_height = 240
-        self.current_image_width = 440
+        self.current_image_height = 480
+        self.current_image_width = 640
     
     # a function to handle messages that are being sent on '/video_topic/compressed' topic...
     def CompressedImageCallback(self, image_msg):
@@ -78,6 +78,7 @@ class MyProcessing:
         if image is None:
             rospy.logwarn("Image is None. Skipping grayscale.")
             return image
+        # Safe current sizes...
         image = cv2.resize(image, (self.current_image_height, self.current_image_width), interpolation=cv2.INTER_NEAREST)
         return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     
