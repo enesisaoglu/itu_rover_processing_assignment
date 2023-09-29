@@ -20,13 +20,16 @@ class MyProcessing:
         self.compressedVideo_subscriber = rospy.Subscriber('/video_topic/compressed', CompressedImage, self.CompressedImageCallback)
         # A publisher to publish the each processed frame... 
         self.compressedVideo_publisher = rospy.Publisher('/rover_view/compressed', CompressedImage, queue_size=10)
-        self.rate = rospy.Rate(0.5) #HZ...
+        self.rate = rospy.Rate(0.5) # HZ...
         # Provides an interface between ROS and OpenCv...
         self.bridge = CvBridge() 
-        # Set current image to none...
+        # Set current image to None...
         self.current_image = None
+        # Set current image size 
+        self.current_image_height = 240
+        self.current_image_width = 440
     
-    # a function to handle messages that is being sent on '/video_topic/compressed' topic...
+    # a function to handle messages that are being sent on '/video_topic/compressed' topic...
     def CompressedImageCallback(self, image_msg):
         try:
             # try to convert compressed image message that is being sent to the cv2
@@ -42,7 +45,7 @@ class MyProcessing:
             rospy.logwarn("Received None image. Skipping processing.")
         
 
-    # a function to handle messages that is being sent on '/filter' topic...
+    # a function to handle messages that are being sent on '/filter' topic...
     def FilteredCommandCallback(self, data):
         global Command
         # Set global command to the data that is being sent as random...
@@ -52,7 +55,7 @@ class MyProcessing:
     def Run(self):
         while not rospy.is_shutdown():
             image = self.current_image
-            print("Video is being processed as",Command)
+            print("Video is being processed as", Command)
             processed_image = None
             if image is not None:
                 if Command == 'GRAY':
@@ -70,53 +73,57 @@ class MyProcessing:
                     # After processing, convert the image back to CompressedImage
                     self.publish_processed_image(processed_image)
     
-    # A function to process image to the gray...
+    # A function to process the image to grayscale...
     def grayscale(self, image):
         if image is None:
             rospy.logwarn("Image is None. Skipping grayscale.")
             return image
+        image = cv2.resize(image, (self.current_image_height, self.current_image_width), interpolation=cv2.INTER_NEAREST)
         return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     
-    # A function to process image to the RGB...
+    # A function to process the image to RGB...
     def rgb(self, image):
-        # Do nothing, as it's already in RGB format
+        # Safe current sizes...
+        image = cv2.resize(image, (self.current_image_height, self.current_image_width), interpolation=cv2.INTER_NEAREST)
+        # Do nothing, as it's already in RGB format...
         return image
     
-    # A function to process height and width of image to the up...
+    # A function to process height and width of the image to up...
     def resize_up(self, image):
         if image is None:
             rospy.logwarn("Image is None. Skipping resize_up.")
             return image
         
-        height, width = self.current_image.shape[:2]
-        print(height,width)
+        self.current_image_height, self.current_image_width = image.shape[:2]
+        rospy.loginfo(f"Resizing up: Original size: ({self.current_image_height}, {self.current_image_width}) ")
 
-        new_height = height * 2
-        new_width = width * 2
+        self.current_image_height = self.current_image_height * 2
+        self.current_image_width = self.current_image_width * 2
 
-        rospy.loginfo(f"Resizing up: Original size: ({height}, {width}), New size: ({new_height}, {new_width})")
+
+        rospy.loginfo(f"New size: ({self.current_image_height}, {self.current_image_width})")
         
 
-        resized_image = cv2.resize(self.current_image, (new_width, new_height), interpolation=cv2.INTER_NEAREST)
+        resized_image = cv2.resize(image, (self.current_image_height, self.current_image_width), interpolation=cv2.INTER_NEAREST)
         return resized_image
 
-    # A function to process height and width of image to the down...
+    # A function to process height and width of the image to down...
     def resize_down(self, image):
         if image is None:
             rospy.logwarn("Image is None. Skipping resize_down.")
             return image
         
-        height, width = self.current_image.shape[:2]
-        print(height,width)
+        self.current_image_height, self.current_image_width = image.shape[:2]
+        rospy.loginfo(f"Resizing up: Original size: ({self.current_image_height}, {self.current_image_width}) ")
 
-        new_height = height // 2
-        new_width = width // 2
+        self.current_image_height = self.current_image_height // 2
+        self.current_image_width = self.current_image_width // 2
+
+
+        rospy.loginfo(f"New size: ({self.current_image_height}, {self.current_image_width})")
         
 
-        rospy.loginfo(f"Resizing down: Original size: ({height}, {width}), New size: ({new_height}, {new_width})")
-        
-
-        resized_image = cv2.resize(self.current_image, (new_width, new_height), interpolation=cv2.INTER_NEAREST)
+        resized_image = cv2.resize(image, (self.current_image_height, self.current_image_width), interpolation=cv2.INTER_NEAREST)
         return resized_image
         
     # A function to publish the processed image as a CompressedImage message...
